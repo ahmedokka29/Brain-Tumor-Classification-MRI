@@ -38,31 +38,163 @@ for i in range(8):
 plt.show()
 ```
 
-## Model Training and Parameter Tuning
+## Model Structure
 
-In this section, we describe the model training and parameter tuning process for our machine learning project. We tested several models and tuned their hyperparameters to optimize their performance. Here's an overview of the process and results:
+To build the neural network for Brain Tumor Classification, an EfficientNetV2B3 architecture is employed. The model structure is defined with flexibility in mind, allowing for variations in learning rate, size of the inner dense layer, and dropout rate. The base EfficientNetV2B3 is used as a feature extractor, followed by additional layers for classification.
 
-### Logistic Regression
+### Create Model Structure
 
-We started with Logistic Regression, and the initial results showed a model accuracy of 0.7408 and an ROC score of 0.8279. However, we found that changing the C value (the regularization parameter) didn't improve the model's performance, and the default value worked best.
+```python
+img_size = (224, 224)
+channels = 3
+img_shape = (img_size[0], img_size[1], channels)
+class_count = len(list(train_gen.class_indices.keys())) # to define number of classes in dense layer
 
-### Random Forest
+def make_model(learning_rate = 0.001 , size_inner=256, droprate=0.5):
+    
+    base_model = keras.applications.efficientnet_v2.EfficientNetV2B3(
+        include_top= False,
+        weights= "imagenet",
+        input_shape= img_shape,
+        pooling= 'max')
+    
+    base_model.trainable = False
 
-The initial untuned Random Forest model achieved an accuracy of 0.7767 and an ROC score of 0.8605. After hyperparameter tuning, the model's performance improved slightly, with an accuracy of 0.7722 and an ROC score of 0.8545.
+    #########################################
+    
+    inputs = keras.Input(shape=img_shape)
+    base = base_model(inputs, training=False)
+    batch = keras.layers.BatchNormalization(axis= -1,
+                                            momentum= 0.99,
+                                            epsilon= 0.001)(base)
+    inner = keras.layers.Dense(size_inner,
+                               kernel_regularizer= regularizers.l2(l= 0.016),
+                               activity_regularizer= regularizers.l1(0.006),
+                               bias_regularizer= regularizers.l1(0.006),
+                               activation='relu')(batch)
+    drop = keras.layers.Dropout(droprate)(inner)
+    outputs = keras.layers.Dense(class_count, activation= 'softmax')(drop)
+    model = keras.Model(inputs, outputs)
+    
+     #########################################
 
-### XGBoost
+    optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
+    loss = keras.losses.CategoricalCrossentropy()
 
-The initial XGBoost model had an accuracy of 0.7767 and an ROC score of 0.7781. However, after parameter tuning, the model's accuracy increased to 0.779, with an ROC score of 0.863.
+    model.compile(
+        optimizer=optimizer,
+        loss=loss,
+        metrics=['accuracy']
+    )
+    
+    return model
 
-Here's an overview of the process:
+model = make_model() # For testing the model function
+model.summary()
+```
 
-- We used k-fold cross-validation to assess model performance, and the average ROC AUC score was used as a metric.
-- For Logistic Regression, we experimented with different C values, but the default value performed the best.
-- Random Forest hyperparameters tuned included the number of estimators and maximum depth.
-- XGBoost hyperparameters were optimized using a grid search for 'max_depth' parameter.
-- We trained and evaluated the models on the validation dataset.
+## Model Training and Hyperparameter Tuning
 
-We selected the best-tuned models for our final solution, which is XGBoost.
+### Learning Rate Tuning
+
+The learning rate is a crucial hyperparameter affecting the convergence and performance of the model. A range of learning rates is tested to identify the optimal value.
+
+```python
+# Learning Rate Tuning
+learning_rate_scores = {}
+
+for lr in [0.0001, 0.001, 0.01, 0.1]:
+    model = make_model(learning_rate=lr)
+    history = model.fit(x=train_gen, epochs=20, validation_data=test_gen)
+    learning_rate_scores[lr] = history.history
+```
+
+### Inner Dense Layer Size Tuning
+
+The size of the inner dense layer is another key parameter influencing the model's capacity. Different sizes are explored to find the most suitable configuration.
+
+```python
+# Inner Dense Layer Size Tuning
+size_scores = {}
+
+for size in [32, 128, 256, 512, 1024]:
+    model = make_model(learning_rate=learning_rate, size_inner=size)
+    history = model.fit(x=train_gen, epochs=20, validation_data=test_gen)
+    size_scores[size] = history.history
+```
+
+### Dropout Rate Tuning
+
+Dropout is introduced to prevent overfitting by randomly dropping units during training. The dropout rate is adjusted to optimize model generalization.
+
+```python
+# Dropout Rate Tuning
+droprate_scores = {}
+
+for droprate in [0.0, 0.2, 0.5, 0.8]:
+    model = make_model(
+        learning_rate=learning_rate,
+        size_inner=size,
+        droprate=droprate
+    )
+    history = model.fit(x=train_gen, epochs=30, validation_data=test_gen)
+    droprate_scores[droprate] = history.history
+```
+
+## Best Hyperparameter Values
+
+After comprehensive tuning, the optimal hyperparameter values are determined:
+
+- Learning Rate: 0.001
+- Inner Dense Layer Size: 128
+- Dropout Rate: 0.5
+
+## Training and Evaluation
+
+The final model is trained with callbacks for model checkpointing and early stopping to ensure the best-performing model is saved.
+
+```python
+# Training with Callbacks
+checkpoint = ModelCheckpoint(
+    'EfficientNetV2B3_best_model.h5',
+    save_best_only=True,
+    monitor='val_accuracy',
+    mode='max'
+)
+
+early_stopping = EarlyStopping(patience=5, restore_best_weights=True)
+
+# ... [Your training code with callbacks]
+```
+Subsequently, the model is evaluated on the test dataset, and the performance is analyzed using graphical representations such as accuracy graphs and confusion matrices.
+
+## Testing and Evaluation
+
+### Model Testing
+
+After hyperparameter tuning, the final model is trained using callbacks to ensure the best version is saved. Let's proceed with testing the model on the test dataset:
+
+![Test Results](./images/test_acc.png)
+
+## Performance Visualization
+
+### Training and Validation Loss/Accuracy Graphs
+
+Visualize the training and validation loss/accuracy over epochs to assess the model's learning progress.
+
+![Accuracy Graphs](./images/loss_accuracy%20graphs.png)
+
+#### Confusion Matrix
+
+Evaluate the model's performance by plotting a confusion matrix using the test dataset.
+
+![Confusion Matrix](images/confusion_matrix.png)
+
+#### Classification Report
+
+Generate a classification report to provide additional metrics on model performance.
+
+![Classification Report](./images/classification_%20report.png)
 
 ## Exporting notebook to script
 
@@ -99,7 +231,7 @@ This command will create a virtual environment and install the required packages
     Now, your virtual environment is set up and activated. You can run your Flask application using Waitress with the following command:
 
     ```bash
-    waitress-serve --listen=0.0.0.0:9696 predict:app
+    waitress-serve --listen=0.0.0.0:9696 gateway:app
     ```
 
 Your Flask application will be accessible at `http://localhost:9696`.
@@ -147,7 +279,7 @@ Your machine learning application is now running within the Docker container, an
 
 ### Dockerfile
 
-Here is the content of the Dockerfile used to create the container:
+Here is the content of the gateway Dockerfile used to create the container:
 
 ```docker
 FROM python:3.11-slim
@@ -160,11 +292,11 @@ COPY ["Pipfile","Pipfile.lock","./"]
 
 RUN pipenv install --system --deploy
 
-COPY ["predict.py" , "model_xgboost.bin" , "./"]
+COPY ["gateway.py" , "proto.py", "base.py" , "./"]
 
 EXPOSE 9696
 
-ENTRYPOINT [ "waitress-serve","--listen=0.0.0.0:9696","predict:app" ]
+ENTRYPOINT [ "waitress-serve","--listen=0.0.0.0:9696","gateway:app" ]
 ```
 
 This Dockerfile sets up a Python environment, installs dependencies, and exposes port 9696 to run your Flask application using Waitress. The `ENTRYPOINT` specifies how to start the application.
@@ -173,35 +305,10 @@ This Dockerfile sets up a Python environment, installs dependencies, and exposes
 
 Locally, user shoud be able to get a similar output to the one shown below upon running all steps successfully.
 
-!["terminal sample output"](sample_output.png)
+!["terminal sample output"](./output_test.png)
 
 Sample data used in predict-test.py
 
 ```python
-test = {
-    "age": 40, "height(cm)": 175,
-    "weight(kg)": 85, "waist(cm)": 88,
-    "eyesight(left)": 1.2, "eyesight(right)": 1,
-    "hearing(left)": 1, "hearing(right)": 1,
-    "systolic": 100, "relaxation": 70,
-    "fasting blood sugar": 112, "Cholesterol": 295,
-    "triglyceride": 184, "HDL": 51,
-    "LDL": 209, "hemoglobin": 15.2,
-    "Urine protein": 1, "serum creatinine": 0.9,
-    "AST": 17, "ALT": 13, "Gtp": 55,
-    "dental caries": 0
-}
+data = {'url': 'https://raw.githubusercontent.com/ahmedokka29/ml-zoomcamp/main/11_capstone_1/data/Testing/glioma_tumor/image(1).jpg'}
 ```
-
-## Cloud Deployment
-
-1. We've integrated Render with our repository, enabling automatic builds and deployments. This ensures that your machine learning application is always up to date.
-
-   ![render logs screenshot](render.png)
-
-2. With Render, your application is accessible online through a provided URL. This makes it easy for users to interact with your machine learning solution without any complicated setup.
-
-3. You can test your deployed application using the provided URL `https://smoking-prediction.onrender.com/predict`, ensuring that it functions as expected in an online environment.
-4. To test it just run `predict-test-render.py`
-
-   ![render putput sample](output_render.png)
