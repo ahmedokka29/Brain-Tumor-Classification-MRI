@@ -12,7 +12,7 @@ This capstone project addresses the critical need for accurate and efficient bra
 
 For dataset access, please refer to [Dataset Link](https://www.kaggle.com/datasets/sartajbhuvaji/brain-tumor-classification-mri).
 
-**All the dataset used in the project are provided and accessible within the link above.**
+**All the dataset used in the project are provided and accessible within the repo.**
 
 ## Exploratory Data Analysis (EDA)
 
