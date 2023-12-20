@@ -236,13 +236,13 @@ This command will create a virtual environment and install the required packages
 
 Your Flask application will be accessible at `http://localhost:9696`.
 
-Please ensure that you run this command within the activated virtual environment to use the correct dependencies.
+Please ensure that you run this command within the activated virtual environment to use the correct dependencies. this is not working alone it's need tensorflow/serving image to work first before testing.
 
 ## Containerization
 
 Our machine learning application has been containerized for easy deployment using Docker. To build and run the container, follow these steps:
 
-### Step 1: Building the Container
+### Step 1: Building the Model Container
 
 1. Make sure you have Docker installed on your system.
 
@@ -251,12 +251,34 @@ Our machine learning application has been containerized for easy deployment usin
 3. Use the following command to build the container. Replace `[containerName]` with your preferred container name (e.g., "ml-app"):
 
    ```bash
-   docker build -t [containerName] .
+   docker build -t [containerName] -f image-model.dockerfile .
    ```
 
-    This command instructs Docker to build an image using the Dockerfile in the current directory.
+    This command instructs Docker to build an image using the `image-model.dockerfile` in the current directory.
 
 ### Step 2: Running the Container
+
+1. Once the container is built, you can run it using the following command:
+
+    ```bash
+    docker run -it --rm -p 8500:8500 [containerName]
+    ```
+
+### Step 3: Building the Gateway Container
+
+1. Make sure you have Docker installed on your system.
+
+2. Navigate to the directory containing your Dockerfile.
+
+3. Use the following command to build the container. Replace `[containerName]` with your preferred container name (e.g., "ml-app"):
+
+   ```bash
+   docker build -t [containerName]  -f image-gateway.dockerfile .
+   ```
+
+    This command instructs Docker to build an image using the `image-gateway.dockerfile` in the current directory.
+
+### Step 4: Running the Container
 
 1. Once the container is built, you can run it using the following command:
 
@@ -272,12 +294,24 @@ Our machine learning application has been containerized for easy deployment usin
 2. Then, you can run the project with the following command:
 
     ```bash
-    python predict-test.py
+    python test.py
     ```
 
 Your machine learning application is now running within the Docker container, and you can access it at `http://localhost:9696`.
 
-### Dockerfile
+### Tensorflow/serving Dockerfile
+
+Here is the content of the model Dockerfile used to create the container:
+
+```docker
+FROM tensorflow/serving:2.7.0
+
+COPY brain-cancer-model /models/brain-cancer-model/1
+
+ENV MODEL_NAME="brain-cancer-model"
+```
+
+### Gateway Dockerfile
 
 Here is the content of the gateway Dockerfile used to create the container:
 
@@ -300,6 +334,55 @@ ENTRYPOINT [ "waitress-serve","--listen=0.0.0.0:9696","gateway:app" ]
 ```
 
 This Dockerfile sets up a Python environment, installs dependencies, and exposes port 9696 to run your Flask application using Waitress. The `ENTRYPOINT` specifies how to start the application.
+
+## Docker Compose
+
+To simplify the deployment of both the model and gateway containers, we use Docker Compose. Follow these steps to set up and run your machine learning application using Docker Compose:
+
+### Step 1: Docker Compose YAML
+
+Create a file named `docker-compose.yml` in your project directory with the following content:
+
+```yaml
+version: "3.11"
+services:
+  brain-cancer-model:
+    image: capstone-1-model:effv2b3-v1-001
+
+  gateway:
+    image: capstone-1-gateway:001
+    environment:
+      - TF_SERVING_HOST=brain-cancer-model:8500
+    ports:
+      - "9696:9696"
+```
+
+This Docker Compose file defines two services: brain-cancer-model and gateway. It specifies the images to use, environment variables, and port mappings.
+
+### Step 2: Running Docker Compose
+
+1- Open a terminal and navigate to your project directory.
+
+2- Execute the following command to start the containers defined in the Docker Compose file:
+
+```bash
+docker-compose up
+```
+3- Docker Compose will download the necessary images and start the containers. You will see logs indicating the initialization process.
+
+4- Access your machine learning application at `http://localhost:9696`.
+
+### Step 3: Stopping Docker Compose
+
+To stop the running containers, use the following command:
+
+```bash
+docker-compose down
+```
+
+This will stop and remove the containers defined in the Docker Compose file.
+
+With Docker Compose, you can easily manage the deployment of your machine learning application, ensuring consistency and simplicity across different environments.
 
 ## Sample output
 
