@@ -1,0 +1,10 @@
+version: "3.11"
+services:
+  brain-cancer-model:
+    image: capstone-1-model:effv2b3-v1-001
+  gateway:
+    image: capstone-1-gateway:001
+    environment:
+      - TF_SERVING_HOST=brain-cancer-model:8500
+    ports:
+      - "9696:9696"
