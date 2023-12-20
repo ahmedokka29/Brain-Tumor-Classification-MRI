@@ -388,7 +388,7 @@ With Docker Compose, you can easily manage the deployment of your machine learni
 
 Locally, user shoud be able to get a similar output to the one shown below upon running all steps successfully.
 
-!["terminal sample output"](./output_test.png)
+!["terminal sample output"](./images/output_test.png)
 
 Sample data used in predict-test.py
 
