@@ -395,3 +395,9 @@ Sample data used in predict-test.py
 ```python
 data = {'url': 'https://raw.githubusercontent.com/ahmedokka29/ml-zoomcamp/main/11_capstone_1/data/Testing/glioma_tumor/image(1).jpg'}
 ```
+
+## Results  
+- Model: EfficientNetV2B3 (Transfer Learning)  
+- Accuracy: 92% on test set  
+- Dataset: 3,000 MRI scans (public Kaggle dataset)  
+- Deployment: Dockerized Flask API (link to endpoint)  
