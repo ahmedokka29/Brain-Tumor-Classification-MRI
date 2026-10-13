@@ -304,7 +304,7 @@ Your machine learning application is now running within the Docker container, an
 Here is the content of the model Dockerfile used to create the container:
 
 ```docker
-FROM tensorflow/serving:2.7.0
+FROM tensorflow/serving:2.15.1
 
 COPY brain-cancer-model /models/brain-cancer-model/1
 
