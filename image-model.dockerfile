@@ -1,4 +1,4 @@
-FROM tensorflow/serving:2.15.1
+FROM tensorflow/serving:2.20.0
 
 COPY brain-cancer-model /models/brain-cancer-model/1
 

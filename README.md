@@ -304,7 +304,7 @@ Your machine learning application is now running within the Docker container, an
 Here is the content of the model Dockerfile used to create the container:
 
 ```docker
-FROM tensorflow/serving:2.15.1
+FROM tensorflow/serving:2.20.0
 
 COPY brain-cancer-model /models/brain-cancer-model/1
 
@@ -316,7 +316,7 @@ ENV MODEL_NAME="brain-cancer-model"
 Here is the content of the gateway Dockerfile used to create the container:
 
 ```docker
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 RUN pip install pipenv
 
